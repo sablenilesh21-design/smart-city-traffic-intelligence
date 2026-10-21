@@ -390,10 +390,18 @@ elif page == "📊 Traffic Analysis":
 
     with left:
         st.markdown("#### Vehicle counts by hour")
-        hourly = subset.groupby("Hour")["new_vehicles"].sum().reindex(
-            range(24), fill_value=0
-        )
-        st.bar_chart(hourly, color="#20bfa9")
+      hourly = subset.groupby("Hour")["new_vehicles"].sum()
+hourly = hourly.sort_index()
+
+st.bar_chart(hourly, color="#20bfa9")
+
+observed_hours = sorted(subset["Hour"].dropna().unique())
+st.caption(
+    f"Showing hours with recorded observations: "
+    f"{', '.join(f'{int(h):02d}:00' for h in observed_hours)}. "
+    "An absent hour means no records were available for the selected filters; "
+    "it does not mean traffic was zero."
+)
 
     with right:
         st.markdown("#### Vehicle type breakdown")
@@ -415,12 +423,20 @@ elif page == "📊 Traffic Analysis":
         st.bar_chart(category_counts, color="#e5a94d")
 
     with right:
-        st.markdown("#### Daily traffic trend")
-        daily = (
-            subset.groupby(subset["Timestamp"].dt.date)["new_vehicles"]
-            .sum()
-        )
-        st.line_chart(daily, color="#a78bfa")
+        st.markdown("#### Daily Recorded Traffic Count")
+
+daily = (
+    subset.groupby(subset["Timestamp"].dt.date)["new_vehicles"]
+    .sum()
+    .sort_index()
+)
+
+st.line_chart(daily, color="#a78bfa")
+
+st.caption(
+    "Daily totals include only the available recorded intervals. "
+    "They should not be interpreted as complete 24-hour traffic totals."
+)
 
     st.markdown("#### Filtered data preview")
     st.dataframe(
