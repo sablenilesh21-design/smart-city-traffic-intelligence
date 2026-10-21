@@ -2,7 +2,6 @@
 import streamlit as st
 import pandas as pd
 import joblib
-import matplotlib.pyplot as plt
 from pathlib import Path
 
 # =========================================================
@@ -176,9 +175,11 @@ def load_data(path):
     data["Date"] = pd.to_datetime(data["Date"])
     return data
 
+
 @st.cache_resource
 def load_model(path):
     return joblib.load(path)
+
 
 try:
     df = load_data(DATA_PATH)
@@ -206,15 +207,16 @@ if missing_columns:
     st.stop()
 
 categories = ["Low", "Medium", "High"]
+
 vehicle_cols = [
     "car_change", "motorbike_change",
     "bus_change", "truck_change"
 ]
 
-# Derive previous-interval traffic using the same five-minute rule.
-# Do not overwrite the dataset if this feature already exists.
+# Calculate PreviousTraffic only if it is absent from the CSV.
 if "PreviousTraffic" not in df.columns:
     df = df.sort_values(["Camera", "Direction", "Timestamp"]).copy()
+
     grouped = df.groupby(["Camera", "Direction"], sort=False)
     previous_count = grouped["new_vehicles"].shift(1)
     previous_time = grouped["Timestamp"].shift(1)
@@ -223,7 +225,9 @@ if "PreviousTraffic" not in df.columns:
         df["Timestamp"] - previous_time
     ) == pd.Timedelta(minutes=5)
 
-    df["PreviousTraffic"] = previous_count.where(valid_gap, 0).fillna(0)
+    df["PreviousTraffic"] = (
+        previous_count.where(valid_gap, 0).fillna(0)
+    )
 
 # =========================================================
 # SIDEBAR NAVIGATION
@@ -263,15 +267,18 @@ st.markdown("""
 # DASHBOARD HOME
 # =========================================================
 if page == "🏠 Dashboard":
-    st.markdown('<div class="section-heading">City Traffic at a Glance</div>',
-                unsafe_allow_html=True)
 
-    total_vehicles = int(df["new_vehicles"].sum())
+    st.markdown(
+        '<div class="section-heading">City Traffic at a Glance</div>',
+        unsafe_allow_html=True
+    )
+
     intersection_count = df["Intersection"].nunique()
     camera_count = df["Camera"].nunique()
-    high_pct = (df["Congestion"].eq("High").mean() * 100)
+    high_pct = df["Congestion"].eq("High").mean() * 100
 
     c1, c2, c3, c4 = st.columns(4)
+
     c1.metric("Processed Intervals", f"{len(df):,}")
     c2.metric("Intersections", intersection_count)
     c3.metric("Camera IDs", camera_count)
@@ -286,31 +293,45 @@ if page == "🏠 Dashboard":
 
     with left:
         st.markdown(
-            '<div class="section-heading">Traffic by Hour</div>',
+            '<div class="section-heading">Traffic by Recorded Hour</div>',
             unsafe_allow_html=True
         )
-        hourly = df.groupby("Hour")["new_vehicles"].sum().reindex(
-            range(24), fill_value=0
+
+        # Show only hours that actually have records.
+        hourly = (
+            df.groupby("Hour")["new_vehicles"]
+            .sum()
+            .sort_index()
         )
+
         st.line_chart(hourly, color="#20bfa9")
-        st.caption("Total recorded vehicle counts grouped by hour of day.")
+
+        st.caption(
+            "Only hours represented in the data are shown. Missing hours "
+            "indicate no available records, not zero traffic."
+        )
 
     with right:
         st.markdown(
             '<div class="section-heading">Category Distribution</div>',
             unsafe_allow_html=True
         )
+
         counts = df["Congestion"].value_counts().reindex(
             categories, fill_value=0
         )
+
         st.bar_chart(counts, color="#4f8cff")
+
         st.caption(
-            "Categories are based on vehicle-count thresholds, "
-            "not independent measurements of road congestion."
+            "Categories use vehicle-count thresholds, not independently "
+            "measured road congestion."
         )
 
-    st.markdown('<div class="section-heading">Explore the System</div>',
-                unsafe_allow_html=True)
+    st.markdown(
+        '<div class="section-heading">Explore the System</div>',
+        unsafe_allow_html=True
+    )
 
     a, b, c = st.columns(3)
 
@@ -336,13 +357,16 @@ if page == "🏠 Dashboard":
         st.markdown("""
         <div class="info-card">
             <h3>🧠 ML Prediction</h3>
-            <p>Estimate a category from the selected location, time,
-            day, direction, and previous traffic count.</p>
+            <p>Estimate a category from location, time, day, direction,
+            and previous traffic count.</p>
         </div>
         """, unsafe_allow_html=True)
 
-    st.markdown('<div class="section-heading">Recent Records</div>',
-                unsafe_allow_html=True)
+    st.markdown(
+        '<div class="section-heading">Recent Records</div>',
+        unsafe_allow_html=True
+    )
+
     st.dataframe(
         df.sort_values("Timestamp", ascending=False).head(10),
         use_container_width=True,
@@ -353,25 +377,34 @@ if page == "🏠 Dashboard":
 # TRAFFIC ANALYSIS
 # =========================================================
 elif page == "📊 Traffic Analysis":
-    st.markdown('<div class="section-heading">Explore Traffic Patterns</div>',
-                unsafe_allow_html=True)
+
+    st.markdown(
+        '<div class="section-heading">Explore Traffic Patterns</div>',
+        unsafe_allow_html=True
+    )
 
     intersections = sorted(df["Intersection"].dropna().unique())
+
     selected_intersection = st.selectbox(
         "Choose an intersection", intersections
     )
 
-    subset = df[df["Intersection"] == selected_intersection].copy()
+    subset = df[
+        df["Intersection"] == selected_intersection
+    ].copy()
 
     direction_options = ["All directions"] + sorted(
         subset["Direction"].dropna().unique()
     )
+
     selected_direction = st.selectbox(
         "Filter by direction", direction_options
     )
 
     if selected_direction != "All directions":
-        subset = subset[subset["Direction"] == selected_direction]
+        subset = subset[
+            subset["Direction"] == selected_direction
+        ]
 
     if subset.empty:
         st.warning("No records match the selected filters.")
@@ -379,9 +412,13 @@ elif page == "📊 Traffic Analysis":
 
     total = int(subset["new_vehicles"].sum())
     average = subset["new_vehicles"].mean()
-    peak_hour = int(subset.groupby("Hour")["new_vehicles"].sum().idxmax())
+
+    peak_hour = int(
+        subset.groupby("Hour")["new_vehicles"].sum().idxmax()
+    )
 
     c1, c2, c3 = st.columns(3)
+
     c1.metric("Vehicle Count Total", f"{total:,}")
     c2.metric("Average per Record", f"{average:.1f}")
     c3.metric("Busiest Recorded Hour", f"{peak_hour:02d}:00")
@@ -389,69 +426,90 @@ elif page == "📊 Traffic Analysis":
     left, right = st.columns(2)
 
     with left:
-        st.markdown("#### Vehicle counts by hour")
-      hourly = subset.groupby("Hour")["new_vehicles"].sum()
-hourly = hourly.sort_index()
+        st.markdown("#### Vehicle counts by recorded hour")
 
-st.bar_chart(hourly, color="#20bfa9")
+        hourly = (
+            subset.groupby("Hour")["new_vehicles"]
+            .sum()
+            .sort_index()
+        )
 
-observed_hours = sorted(subset["Hour"].dropna().unique())
-st.caption(
-    f"Showing hours with recorded observations: "
-    f"{', '.join(f'{int(h):02d}:00' for h in observed_hours)}. "
-    "An absent hour means no records were available for the selected filters; "
-    "it does not mean traffic was zero."
-)
+        st.bar_chart(hourly, color="#20bfa9")
+
+        observed_hours = sorted(
+            subset["Hour"].dropna().unique()
+        )
+
+        st.caption(
+            "Hours with recorded observations: "
+            + ", ".join(f"{int(h):02d}:00" for h in observed_hours)
+            + ". Missing hours mean no records were available, "
+            "not necessarily zero traffic."
+        )
 
     with right:
         st.markdown("#### Vehicle type breakdown")
+
         totals = subset[vehicle_cols].sum().rename({
             "car_change": "Cars",
             "motorbike_change": "Motorbikes",
             "bus_change": "Buses",
             "truck_change": "Trucks"
         })
+
         st.bar_chart(totals, color="#4f8cff")
 
     left, right = st.columns(2)
 
     with left:
         st.markdown("#### Count-based categories")
+
         category_counts = subset["Congestion"].value_counts().reindex(
             categories, fill_value=0
         )
+
         st.bar_chart(category_counts, color="#e5a94d")
+
+        st.caption(
+            "Bars count five-minute camera-direction records in each category, "
+            "not the number of hours spent congested."
+        )
 
     with right:
         st.markdown("#### Daily Recorded Traffic Count")
 
-daily = (
-    subset.groupby(subset["Timestamp"].dt.date)["new_vehicles"]
-    .sum()
-    .sort_index()
-)
+        daily = (
+            subset.groupby(subset["Timestamp"].dt.date)["new_vehicles"]
+            .sum()
+            .sort_index()
+        )
 
-st.line_chart(daily, color="#a78bfa")
+        st.line_chart(daily, color="#a78bfa")
 
-st.caption(
-    "Daily totals include only the available recorded intervals. "
-    "They should not be interpreted as complete 24-hour traffic totals."
-)
+        st.caption(
+            "Daily totals include only available recorded intervals. "
+            "They should not be interpreted as complete 24-hour totals."
+        )
 
     st.markdown("#### Filtered data preview")
+
     st.dataframe(
         subset.sort_values("Timestamp", ascending=False).head(100),
         use_container_width=True,
         hide_index=True
     )
+
     st.caption("Showing up to 100 recent matching records.")
 
 # =========================================================
 # CONGESTION PREDICTION
 # =========================================================
 elif page == "🤖 Congestion Prediction":
-    st.markdown('<div class="section-heading">Estimate a Traffic Category</div>',
-                unsafe_allow_html=True)
+
+    st.markdown(
+        '<div class="section-heading">Estimate a Traffic Category</div>',
+        unsafe_allow_html=True
+    )
 
     st.info(
         "This tool predicts a category derived from historical vehicle counts. "
@@ -460,33 +518,39 @@ elif page == "🤖 Congestion Prediction":
 
     intersections = sorted(df["Intersection"].dropna().unique())
     directions = sorted(df["Direction"].dropna().unique())
+
     day_names = [
         "Monday", "Tuesday", "Wednesday", "Thursday",
         "Friday", "Saturday", "Sunday"
     ]
 
     with st.form("prediction_form"):
+
         st.markdown("#### 1. Select location and time")
+
         col1, col2 = st.columns(2)
 
         with col1:
             selected_intersection = st.selectbox(
                 "Intersection", intersections
             )
-            hour = st.slider("Hour of day", 0, 23, 18)
+
+            hour = st.slider(
+                "Hour of day", 0, 23, 18
+            )
 
         with col2:
             selected_direction = st.selectbox(
                 "Direction", directions
             )
+
             day_name = st.selectbox(
                 "Day of week", day_names, index=2
             )
 
         day_of_week = day_names.index(day_name)
 
-        # Estimate a typical previous-interval count from matching
-        # historical observations. The user can still override it.
+        # Estimate a typical previous-interval count using historical data.
         historical = df[
             (df["Intersection"] == selected_intersection)
             & (df["Direction"] == selected_direction)
@@ -495,18 +559,26 @@ elif page == "🤖 Congestion Prediction":
         ]
 
         if not historical.empty:
-            automatic_count = float(historical["PreviousTraffic"].median())
+            automatic_count = float(
+                historical["PreviousTraffic"].median()
+            )
         else:
             fallback = df[
                 (df["Intersection"] == selected_intersection)
                 & (df["Direction"] == selected_direction)
             ]
-            automatic_count = (
-                float(fallback["PreviousTraffic"].median())
-                if not fallback.empty else float(df["PreviousTraffic"].median())
-            )
+
+            if not fallback.empty:
+                automatic_count = float(
+                    fallback["PreviousTraffic"].median()
+                )
+            else:
+                automatic_count = float(
+                    df["PreviousTraffic"].median()
+                )
 
         st.markdown("#### 2. Previous traffic count")
+
         use_automatic = st.checkbox(
             "Use estimated historical count automatically",
             value=True
@@ -514,14 +586,17 @@ elif page == "🤖 Congestion Prediction":
 
         if use_automatic:
             previous_traffic = automatic_count
+
             st.metric(
                 "Estimated previous five-minute count",
                 f"{previous_traffic:.0f}"
             )
+
             st.caption(
-                "Calculated from matching historical records where available. "
-                "It is an estimate, not a live count."
+                "Estimated from matching historical records where available. "
+                "This is not a live count."
             )
+
         else:
             previous_traffic = st.number_input(
                 "Enter previous five-minute vehicle count",
@@ -531,10 +606,12 @@ elif page == "🤖 Congestion Prediction":
             )
 
         submitted = st.form_submit_button(
-            "✨ Predict congestion", use_container_width=True
+            "✨ Predict congestion",
+            use_container_width=True
         )
 
     if submitted:
+
         input_data = pd.DataFrame([{
             "Hour": hour,
             "DayOfWeek": day_of_week,
@@ -547,24 +624,36 @@ elif page == "🤖 Congestion Prediction":
         try:
             prediction = model.predict(input_data)[0]
             confidence = None
+            probabilities = None
+            classes = None
 
             if hasattr(model, "predict_proba"):
                 probabilities = model.predict_proba(input_data)[0]
 
                 if hasattr(model, "named_steps"):
                     classifier = model.named_steps.get("classifier")
-                    classes = classifier.classes_ if classifier is not None else model.classes_
+
+                    classes = (
+                        classifier.classes_
+                        if classifier is not None
+                        else model.classes_
+                    )
                 else:
                     classes = model.classes_
 
-                confidence = probabilities[list(classes).index(prediction)]
+                confidence = probabilities[
+                    list(classes).index(prediction)
+                ]
 
             result_colors = {
                 "Low": "#20bfa9",
                 "Medium": "#e5a94d",
                 "High": "#ff6b6b"
             }
-            result_color = result_colors.get(prediction, "#66e3ce")
+
+            result_color = result_colors.get(
+                prediction, "#66e3ce"
+            )
 
             st.markdown(f"""
             <div class="result-card">
@@ -580,16 +669,46 @@ elif page == "🤖 Congestion Prediction":
             """, unsafe_allow_html=True)
 
             if confidence is not None:
-                st.markdown("#### Model confidence")
-                st.progress(float(confidence))
-                st.write(f"Estimated class probability: **{confidence:.1%}**")
-                st.caption(
-                    "This is the model's estimated probability for its "
-                    "predicted class, not a guarantee of real-world accuracy."
+
+                st.markdown("#### Probability by category")
+
+                probability_data = pd.DataFrame({
+                    "Category": classes,
+                    "Estimated probability (%)": probabilities * 100
+                }).set_index("Category")
+
+                probability_data = probability_data.reindex(
+                    categories, fill_value=0
                 )
 
+                st.bar_chart(
+                    probability_data,
+                    horizontal=True,
+                    color="#20bfa9"
+                )
+
+                st.write(
+                    "Probability assigned to the predicted category: "
+                    f"**{confidence:.1%}**"
+                )
+
+                if confidence < 0.60:
+                    st.warning(
+                        "The model's highest class probability is below 60%. "
+                        "Treat this prediction with caution."
+                    )
+                else:
+                    st.caption(
+                        "A higher model probability is not a guarantee of "
+                        "real-world accuracy; probability calibration has "
+                        "not been established here."
+                    )
+
             with st.expander("View model inputs"):
-                st.dataframe(input_data, use_container_width=True)
+                st.dataframe(
+                    input_data,
+                    use_container_width=True
+                )
 
         except Exception as e:
             st.error(f"Prediction failed: {e}")
@@ -598,8 +717,11 @@ elif page == "🤖 Congestion Prediction":
 # ABOUT PROJECT
 # =========================================================
 elif page == "ℹ️ About Project":
-    st.markdown('<div class="section-heading">About This Project</div>',
-                unsafe_allow_html=True)
+
+    st.markdown(
+        '<div class="section-heading">About This Project</div>',
+        unsafe_allow_html=True
+    )
 
     st.markdown("""
     This project explores historical traffic counts collected at selected
@@ -631,6 +753,7 @@ elif page == "ℹ️ About Project":
         """, unsafe_allow_html=True)
 
     st.markdown("#### Important limitations")
+
     st.warning(
         "The categories are generated from vehicle-count thresholds. "
         "They are not ground-truth congestion labels measured from road speed "
@@ -639,6 +762,7 @@ elif page == "ℹ️ About Project":
     )
 
     st.markdown("#### Project workflow")
+
     st.markdown("""
     1. Clean and process the traffic-camera data.
     2. Aggregate observations into five-minute intervals.
@@ -651,6 +775,7 @@ elif page == "ℹ️ About Project":
 # FOOTER
 # =========================================================
 st.divider()
+
 st.caption(
     "Smart City Traffic Intelligence • Academic data science project • "
     "Historical Pune traffic data • Not a live traffic monitoring service"
