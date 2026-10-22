@@ -1,12 +1,15 @@
 
 import streamlit as st
 import pandas as pd
-import joblib
+import numpy as np
+import plotly.express as px
+import plotly.graph_objects as go
 from pathlib import Path
+import joblib
 
-# =====================================================
-# 1. PAGE CONFIGURATION
-# =====================================================
+# --------------------------------------------------
+# PAGE CONFIGURATION
+# --------------------------------------------------
 st.set_page_config(
     page_title="Smart City Traffic Intelligence",
     page_icon="🚦",
@@ -14,965 +17,1212 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-BASE_DIR = Path(__file__).resolve().parent
-DATA_PATH = BASE_DIR / "traffic_5min.csv"
-MODEL_PATH = BASE_DIR / "traffic_congestion_model.joblib"
+DATA_FILE = Path("traffic_5min.csv")
+MODEL_FILE = Path("traffic_congestion_model.joblib")
 
-PAGES = [
-    "🏠 Dashboard",
-    "📊 Traffic Analysis",
-    "🤖 Congestion Prediction",
-    "ℹ️ About Project"
-]
-
-# =====================================================
-# 2. CUSTOM STYLING
-# =====================================================
+# --------------------------------------------------
+# THEME AND CSS
+# --------------------------------------------------
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
 
-html, body, [class*="css"] {
-    font-family: 'Inter', sans-serif;
+:root {
+    --bg: #0b1120;
+    --panel: #121c30;
+    --border: #26354c;
+    --text: #e8eef8;
+    --muted: #94a5bd;
+    --cyan: #48d7e8;
+    --blue: #7297ff;
 }
 
 .stApp {
-    background: linear-gradient(135deg, #0b1220, #101b2d);
-    color: #e8eef8;
+    background:
+        radial-gradient(ellipse at 10% 0%, #142640 0%, transparent 40%),
+        #0b1120;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
 }
 
-[data-testid="stHeader"] {
-    background: rgba(11, 18, 32, 0.9);
+h1, h2, h3 {
+    font-family: 'Space Grotesk', sans-serif !important;
+    color: #f1f6ff !important;
+}
+
+p, label, .stMarkdown {
+    color: #d5deed;
 }
 
 [data-testid="stSidebar"] {
-    background: #0a1322;
-    border-right: 1px solid #24334a;
+    background: #0e1728;
+    border-right: 1px solid #25334a;
 }
 
 [data-testid="stSidebar"] * {
     color: #e8eef8;
 }
 
-.hero {
-    padding: 30px;
-    border: 1px solid #2b405b;
-    border-radius: 20px;
-    background: linear-gradient(115deg, #14243a, #123b45);
-    margin-bottom: 24px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-}
-
-.hero h1 {
-    font-size: clamp(1.7rem, 3vw, 2.4rem);
-    font-weight: 800;
-    color: #f2f7ff;
-    margin: 0 0 10px 0;
-}
-
-.hero p {
-    color: #b9cbdc;
-    font-size: 1rem;
-    line-height: 1.6;
-    margin: 0;
-}
-
-.section-heading {
-    color: #66e3ce;
-    font-size: 1.25rem;
-    font-weight: 700;
-    margin-top: 25px;
-    margin-bottom: 16px;
-    padding-left: 12px;
-    border-left: 4px solid #20bfa9;
-}
-
 [data-testid="stMetric"] {
-    background: #14243a;
-    border: 1px solid #2b405b;
+    background: linear-gradient(145deg, #17243a, #111b2d);
+    border: 1px solid #2b3c56;
     border-radius: 15px;
-    padding: 18px;
+    padding: 18px 18px;
 }
 
 [data-testid="stMetricLabel"] {
-    color: #a9bdd2;
+    color: #9fb0c8 !important;
 }
 
 [data-testid="stMetricValue"] {
-    color: #66e3ce;
-    font-weight: 800;
+    color: #f2f7ff !important;
+    font-family: 'Space Grotesk', sans-serif;
 }
 
-.info-card {
-    background: #14243a;
-    border: 1px solid #2b405b;
+[data-testid="stMetricDelta"] {
+    color: #48d7e8 !important;
+}
+
+div[data-testid="stVerticalBlockBorderWrapper"] {
+    border-color: #26354c !important;
     border-radius: 15px;
-    padding: 20px;
-    min-height: 155px;
-    margin-bottom: 10px;
-    box-shadow: 0 6px 20px rgba(0,0,0,0.12);
-    transition: all 0.2s ease-in-out;
 }
 
-.info-card:hover {
-    border-color: #20bfa9;
-    transform: translateY(-3px);
-}
-
-.info-card h3 {
-    color: #66e3ce;
-    font-size: 1.05rem;
-    margin-top: 0;
-}
-
-.info-card p {
-    color: #c1cede;
-    font-size: 0.92rem;
-    line-height: 1.55;
-}
-
-div.stButton > button,
-div.stFormSubmitButton > button {
-    width: 100%;
-    min-height: 44px;
-    background: #20bfa9;
-    color: #071521;
-    font-weight: 700;
-    border: 1px solid #20bfa9;
+.stButton > button {
     border-radius: 10px;
-    transition: all 0.2s ease-in-out;
+    border: 1px solid #344964;
+    background: #17263c;
+    color: #eef6ff;
+    min-height: 42px;
+    font-weight: 600;
 }
 
-div.stButton > button:hover,
-div.stFormSubmitButton > button:hover {
-    background: #66e3ce;
-    color: #071521;
-    border-color: #66e3ce;
-    transform: translateY(-2px);
-    box-shadow: 0 6px 16px rgba(32,191,169,0.2);
+.stButton > button:hover {
+    border-color: #48d7e8;
+    color: #48d7e8;
 }
 
-[data-testid="stForm"] {
-    background: #14243a;
-    border: 1px solid #2b405b;
-    border-radius: 16px;
-    padding: 22px;
+.stDownloadButton > button {
+    background: #19384a;
+    color: white;
+    border-radius: 10px;
 }
 
-.result-card {
-    padding: 25px;
-    border-radius: 16px;
-    border: 1px solid #2b405b;
-    background: #14243a;
-    text-align: center;
-    margin: 18px 0;
-}
-
-.result-caption {
-    color: #b9cbdc;
-    font-size: 0.9rem;
-}
-
-.result-value {
-    font-size: 2.4rem;
-    font-weight: 800;
-    margin: 12px 0;
+div[data-baseweb="select"] > div,
+div[data-baseweb="input"] > div {
+    background: #111c2e;
+    border-color: #30415b;
+    border-radius: 9px;
 }
 
 hr {
-    border-color: #2b405b;
+    border-color: #26354c;
 }
+
+.hero {
+    padding: 27px 30px;
+    border-radius: 19px;
+    background: linear-gradient(115deg, #172c46, #122036 65%, #173544);
+    border: 1px solid #30465f;
+    margin-bottom: 24px;
+}
+
+.eyebrow {
+    text-transform: uppercase;
+    color: #48d7e8;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 2px;
+}
+
+.hero-title {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: clamp(27px, 3.2vw, 39px);
+    font-weight: 700;
+    color: #f4f8ff;
+    line-height: 1.2;
+    margin: 10px 0;
+}
+
+.hero-subtitle {
+    color: #b2c3d9;
+    font-size: 14px;
+    max-width: 720px;
+    line-height: 1.7;
+}
+
+.section-label {
+    color: #48d7e8;
+    font-size: 11px;
+    letter-spacing: 1.8px;
+    font-weight: 700;
+    text-transform: uppercase;
+    margin-bottom: 5px;
+}
+
+.panel-title {
+    color: #edf4ff;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 19px;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.panel-subtitle {
+    color: #8fa2bc;
+    font-size: 12px;
+    margin-bottom: 15px;
+}
+
+.insight-card {
+    background: linear-gradient(145deg, #15243a, #111b2d);
+    border: 1px solid #2a3c55;
+    padding: 18px;
+    border-radius: 14px;
+    min-height: 130px;
+}
+
+.insight-title {
+    color: #94a9c5;
+    font-size: 12px;
+    margin-bottom: 8px;
+}
+
+.insight-value {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 23px;
+    font-weight: 700;
+    color: #f2f7ff;
+}
+
+.insight-note {
+    font-size: 12px;
+    color: #91a7c1;
+    margin-top: 8px;
+}
+
+.status-pill {
+    display: inline-block;
+    border: 1px solid #31556b;
+    color: #64dce7;
+    background: #132d3c;
+    border-radius: 30px;
+    padding: 5px 11px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.small-note {
+    color: #8fa2bc;
+    font-size: 12px;
+}
+
+[data-testid="stDataFrame"] {
+    border: 1px solid #2a3c55;
+    border-radius: 12px;
+}
+
+footer {visibility: hidden;}
+#MainMenu {visibility: hidden;}
 </style>
 """, unsafe_allow_html=True)
 
 
-# =====================================================
-# 3. LOAD DATA AND MODEL
-# =====================================================
+# --------------------------------------------------
+# DATA LOADING
+# --------------------------------------------------
 @st.cache_data
-def load_data(file_path):
-    data = pd.read_csv(file_path)
+def load_data():
+    if not DATA_FILE.exists():
+        return None
 
-    required = [
-        "Timestamp", "Intersection", "Camera", "Direction",
-        "Hour", "DayOfWeek", "IsWeekend", "new_vehicles",
-        "Congestion", "car_change", "motorbike_change",
-        "bus_change", "truck_change"
-    ]
+    df = pd.read_csv(DATA_FILE)
 
-    missing = [column for column in required if column not in data.columns]
+    # Standardize column names
+    df.columns = [str(c).strip() for c in df.columns]
 
-    if missing:
-        raise ValueError(
-            f"Dataset is missing these columns: {missing}"
+    # Build timestamp from Date and Time when needed
+    if "Timestamp" in df.columns:
+        df["Timestamp"] = pd.to_datetime(
+            df["Timestamp"], errors="coerce"
+        )
+    elif "Date" in df.columns and "Time" in df.columns:
+        df["Timestamp"] = pd.to_datetime(
+            df["Date"].astype(str) + " " + df["Time"].astype(str),
+            errors="coerce"
         )
 
-    data["Timestamp"] = pd.to_datetime(
-        data["Timestamp"], errors="coerce"
+    if "Timestamp" in df.columns:
+        df["Hour"] = df["Timestamp"].dt.hour
+        df["DateOnly"] = df["Timestamp"].dt.date
+        df["DayOfWeek"] = df["Timestamp"].dt.dayofweek
+        df["DayName"] = df["Timestamp"].dt.day_name()
+        df["IsWeekend"] = (df["DayOfWeek"] >= 5).astype(int)
+
+    # Ensure expected vehicle columns exist
+    vehicle_cols = ["car_change", "motorbike_change",
+                    "bus_change", "truck_change"]
+
+    for col in vehicle_cols:
+        if col not in df.columns:
+            df[col] = 0
+
+        df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
+
+    # Use the provided traffic count if available
+    if "new_vehicles" not in df.columns:
+        df["new_vehicles"] = df[vehicle_cols].sum(axis=1)
+
+    df["new_vehicles"] = pd.to_numeric(
+        df["new_vehicles"], errors="coerce"
+    ).fillna(0)
+
+    # Create a category only if it is absent
+    if "Congestion" not in df.columns:
+        df["Congestion"] = pd.cut(
+            df["new_vehicles"],
+            bins=[-np.inf, 9, 52, np.inf],
+            labels=["Low", "Medium", "High"]
+        ).astype(str)
+
+    df["Congestion"] = (
+        df["Congestion"].astype(str).str.strip().str.title()
     )
 
-    if "Date" in data.columns:
-        data["Date"] = pd.to_datetime(
-            data["Date"], errors="coerce"
-        )
+    df = df.replace([np.inf, -np.inf], np.nan)
 
-    numeric_columns = [
-        "Hour", "DayOfWeek", "IsWeekend", "new_vehicles",
-        "car_change", "motorbike_change", "bus_change", "truck_change"
-    ]
-
-    for column in numeric_columns:
-        data[column] = pd.to_numeric(
-            data[column], errors="coerce"
-        )
-
-    data = data.dropna(
-        subset=[
-            "Timestamp", "Intersection", "Camera", "Direction",
-            "Hour", "DayOfWeek", "IsWeekend", "new_vehicles",
-            "Congestion"
-        ]
-    ).copy()
-
-    for column in numeric_columns:
-        data[column] = data[column].fillna(0)
-
-    data["Hour"] = data["Hour"].astype(int)
-    data["DayOfWeek"] = data["DayOfWeek"].astype(int)
-    data["IsWeekend"] = data["IsWeekend"].astype(int)
-
-    return data
+    return df
 
 
 @st.cache_resource
-def load_model(file_path):
-    saved_object = joblib.load(file_path)
+def load_model():
+    if not MODEL_FILE.exists():
+        return None
 
-    # Support either a model saved directly or a dictionary
-    # containing the model under the "model" key.
-    if isinstance(saved_object, dict) and "model" in saved_object:
-        return saved_object["model"]
+    try:
+        saved = joblib.load(MODEL_FILE)
 
-    return saved_object
+        if isinstance(saved, dict):
+            return saved.get("model", saved.get("pipeline"))
+
+        return saved
+    except Exception:
+        return None
 
 
-if not DATA_PATH.exists():
-    st.error("Dataset file not found: traffic_5min.csv")
-    st.info("Upload traffic_5min.csv beside app.py in your repository.")
-    st.stop()
+df = load_data()
+model = load_model()
 
-if not MODEL_PATH.exists():
-    st.error("Model file not found: traffic_congestion_model.joblib")
-    st.info(
-        "Upload traffic_congestion_model.joblib beside app.py "
-        "in your repository."
+if df is None:
+    st.error(
+        "The file traffic_5min.csv was not found. "
+        "Make sure it is in the same GitHub folder as app.py."
     )
-    st.stop()
-
-try:
-    df = load_data(str(DATA_PATH))
-    model = load_model(str(MODEL_PATH))
-except Exception as error:
-    st.error(f"Unable to load the project files: {error}")
     st.stop()
 
 if df.empty:
-    st.error("The dataset has no usable records.")
+    st.error("The traffic dataset is empty.")
     st.stop()
 
+if "Intersection" not in df.columns:
+    df["Intersection"] = "Unknown"
 
-# =====================================================
-# 4. PREPARE PREVIOUS TRAFFIC FEATURE
-# =====================================================
-# The trained model expects PreviousTraffic. If it is already
-# present in the CSV, keep it. Otherwise calculate it from the
-# preceding five-minute record for the same camera and direction.
+if "Direction" not in df.columns:
+    df["Direction"] = "Unknown"
 
-if "PreviousTraffic" not in df.columns:
-    df = df.sort_values(
-        ["Camera", "Direction", "Timestamp"]
-    ).copy()
+df["Intersection"] = df["Intersection"].fillna("Unknown").astype(str)
+df["Direction"] = df["Direction"].fillna("Unknown").astype(str)
 
-    group_columns = ["Camera", "Direction"]
-
-    previous_count = df.groupby(group_columns)["new_vehicles"].shift(1)
-    previous_timestamp = df.groupby(group_columns)["Timestamp"].shift(1)
-
-    valid_previous_interval = (
-        df["Timestamp"] - previous_timestamp
-    ) == pd.Timedelta(minutes=5)
-
-    df["PreviousTraffic"] = (
-        previous_count.where(valid_previous_interval, 0).fillna(0)
-    )
-
-df["PreviousTraffic"] = pd.to_numeric(
-    df["PreviousTraffic"], errors="coerce"
-).fillna(0)
-
-CATEGORIES = ["Low", "Medium", "High"]
-
-VEHICLE_COLUMNS = [
-    "car_change",
-    "motorbike_change",
-    "bus_change",
-    "truck_change"
-]
-
-VEHICLE_LABELS = {
-    "car_change": "Cars",
-    "motorbike_change": "Motorbikes",
-    "bus_change": "Buses",
-    "truck_change": "Trucks"
+# --------------------------------------------------
+# CHART CONFIGURATION
+# --------------------------------------------------
+CHART_COLORS = {
+    "Low": "#48d7a8",
+    "Medium": "#f7bd59",
+    "High": "#ff7185",
+    "car_change": "#48d7e8",
+    "motorbike_change": "#7297ff",
+    "bus_change": "#b99aff",
+    "truck_change": "#f5a76b"
 }
 
-DAY_NAMES = [
-    "Monday", "Tuesday", "Wednesday", "Thursday",
-    "Friday", "Saturday", "Sunday"
-]
+def style_chart(fig, height=330):
+    fig.update_layout(
+        height=height,
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        font=dict(color="#c6d3e5", family="DM Sans"),
+        margin=dict(l=12, r=12, t=35, b=12),
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="left",
+            x=0
+        ),
+        hoverlabel=dict(
+            bgcolor="#17263c",
+            bordercolor="#48d7e8",
+            font_color="#ffffff"
+        ),
+        xaxis=dict(
+            gridcolor="#25344a",
+            zerolinecolor="#25344a"
+        ),
+        yaxis=dict(
+            gridcolor="#25344a",
+            zerolinecolor="#25344a"
+        )
+    )
+    return fig
 
 
-# =====================================================
-# 5. NAVIGATION HELPERS
-# =====================================================
-def navigate_to(page_name):
-    st.session_state["navigation"] = page_name
+def panel_heading(title, subtitle):
+    st.markdown(
+        f'<div class="panel-title">{title}</div>'
+        f'<div class="panel-subtitle">{subtitle}</div>',
+        unsafe_allow_html=True
+    )
 
 
-if "navigation" not in st.session_state:
-    st.session_state["navigation"] = PAGES[0]
-
-
-# =====================================================
-# 6. SIDEBAR
-# =====================================================
+# --------------------------------------------------
+# SIDEBAR NAVIGATION
+# --------------------------------------------------
 with st.sidebar:
     st.markdown("## 🚦 Traffic Intelligence")
-    st.caption("Pune | Historical Traffic Analytics")
-    st.divider()
+    st.markdown(
+        '<span class="status-pill">PUNE · HISTORICAL DATA</span>',
+        unsafe_allow_html=True
+    )
+    st.markdown("---")
 
-    selected_page = st.radio(
+    page = st.radio(
         "NAVIGATION",
-        PAGES,
+        [
+            "Overview",
+            "Traffic Explorer",
+            "Congestion Prediction",
+            "About Project"
+        ],
         key="navigation"
     )
 
-    st.divider()
+    st.markdown("---")
+    st.markdown("### Dataset snapshot")
 
-    st.markdown("### 📌 Project Information")
-    st.caption("Dataset: January 2023")
-    st.caption("Model: Machine learning classifier")
-    st.caption("Mode: Historical data analysis")
+    st.metric("Records", f"{len(df):,}")
 
-
-# =====================================================
-# 7. HEADER
-# =====================================================
-st.markdown("""
-<div class="hero">
-    <h1>🚦 Smart City Traffic Intelligence</h1>
-    <p>
-        Explore historical traffic patterns, analyse vehicle counts,
-        and estimate traffic categories using machine learning.
-    </p>
-</div>
-""", unsafe_allow_html=True)
-
-
-# =====================================================
-# 8. DASHBOARD HOME
-# =====================================================
-if selected_page == "🏠 Dashboard":
-
-    st.markdown(
-        '<div class="section-heading">City Traffic at a Glance</div>',
-        unsafe_allow_html=True
-    )
-
-    total_records = len(df)
-    total_intersections = df["Intersection"].nunique()
-    total_cameras = df["Camera"].nunique()
-
-    high_percentage = (
-        df["Congestion"].astype(str).eq("High").mean() * 100
-    )
-
-    c1, c2, c3, c4 = st.columns(4)
-
-    c1.metric("Processed Records", f"{total_records:,}")
-    c2.metric("Intersections", f"{total_intersections:,}")
-    c3.metric("Camera IDs", f"{total_cameras:,}")
-    c4.metric("High-Category Records", f"{high_percentage:.1f}%")
+    if "Timestamp" in df.columns and df["Timestamp"].notna().any():
+        start_date = df["Timestamp"].min().strftime("%d %b %Y")
+        end_date = df["Timestamp"].max().strftime("%d %b %Y")
+        st.caption(f"Available dates: {start_date} – {end_date}")
 
     st.caption(
-        "Each record represents a five-minute interval for one camera "
-        "and direction. These figures describe the available dataset, "
-        "not live city-wide traffic."
+        "This app analyses historical traffic-count data. "
+        "It does not receive live traffic feeds."
     )
 
-    left, right = st.columns([1.2, 0.8])
 
-    with left:
-        st.markdown(
-            '<div class="section-heading">Traffic by Recorded Hour</div>',
-            unsafe_allow_html=True
-        )
+# --------------------------------------------------
+# PAGE 1: OVERVIEW
+# --------------------------------------------------
+if page == "Overview":
 
-        hourly = (
-            df.groupby("Hour")["new_vehicles"]
-            .sum()
-            .sort_index()
-        )
-
-        st.line_chart(hourly, color="#20bfa9")
-
-        st.caption(
-            "Only hours with observations are shown. Missing hours do not "
-            "automatically mean zero traffic."
-        )
-
-    with right:
-        st.markdown(
-            '<div class="section-heading">Category Distribution</div>',
-            unsafe_allow_html=True
-        )
-
-        category_counts = (
-            df["Congestion"].astype(str)
-            .value_counts()
-            .reindex(CATEGORIES, fill_value=0)
-        )
-
-        st.bar_chart(category_counts, color="#4f8cff")
-
-        st.caption(
-            "Categories are based on vehicle-count thresholds rather than "
-            "independently measured road speed."
-        )
-
-    st.markdown(
-        '<div class="section-heading">Explore the System</div>',
-        unsafe_allow_html=True
-    )
-
-    card1, card2, card3 = st.columns(3)
-
-    with card1:
-        st.markdown("""
-        <div class="info-card">
-            <h3>📍 Historical Data</h3>
-            <p>
-                Explore historical observations by intersection,
-                camera, direction, and time.
-            </p>
+    st.markdown("""
+    <div class="hero">
+        <div class="eyebrow">SMART MOBILITY · ANALYTICS PLATFORM</div>
+        <div class="hero-title">Understand traffic.<br>Make smarter decisions.</div>
+        <div class="hero-subtitle">
+            Explore historical vehicle-count patterns across selected Pune
+            intersections, identify busy periods, and estimate congestion
+            categories from the available data.
         </div>
-        """, unsafe_allow_html=True)
+        <br>
+        <span class="status-pill">● HISTORICAL DATA MODE</span>
+    </div>
+    """, unsafe_allow_html=True)
 
-        st.button(
-            "Explore Historical Data →",
-            key="historical_button",
-            on_click=navigate_to,
-            args=("📊 Traffic Analysis",),
-            use_container_width=True
+    # Global filters
+    st.markdown('<div class="section-label">CONTROL CENTRE</div>',
+                unsafe_allow_html=True)
+    st.markdown("### Your traffic overview")
+
+    f1, f2 = st.columns([1, 1])
+
+    with f1:
+        intersections = sorted(df["Intersection"].unique().tolist())
+        selected_intersection = st.selectbox(
+            "Select intersection",
+            ["All intersections"] + intersections,
+            key="overview_intersection"
         )
 
-    with card2:
-        st.markdown("""
-        <div class="info-card">
-            <h3>📈 Traffic Insights</h3>
-            <p>
-                Compare recorded hourly patterns, vehicle types,
-                and count-based categories.
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
-
-        st.button(
-            "View Traffic Insights →",
-            key="insights_button",
-            on_click=navigate_to,
-            args=("📊 Traffic Analysis",),
-            use_container_width=True
+    with f2:
+        directions = sorted(df["Direction"].unique().tolist())
+        selected_direction = st.selectbox(
+            "Select direction",
+            ["All directions"] + directions,
+            key="overview_direction"
         )
 
-    with card3:
-        st.markdown("""
-        <div class="info-card">
-            <h3>🧠 ML Prediction</h3>
-            <p>
-                Estimate a Low, Medium, or High category using
-                the saved machine-learning model.
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
+    view = df.copy()
 
-        st.button(
-            "Try Prediction →",
-            key="prediction_button",
-            on_click=navigate_to,
-            args=("🤖 Congestion Prediction",),
-            use_container_width=True
-        )
-
-    st.markdown(
-        '<div class="section-heading">Recent Records</div>',
-        unsafe_allow_html=True
-    )
-
-    st.dataframe(
-        df.sort_values("Timestamp", ascending=False).head(10),
-        use_container_width=True,
-        hide_index=True
-    )
-
-
-# =====================================================
-# 9. TRAFFIC ANALYSIS
-# =====================================================
-elif selected_page == "📊 Traffic Analysis":
-
-    st.markdown(
-        '<div class="section-heading">Explore Traffic Patterns</div>',
-        unsafe_allow_html=True
-    )
-
-    intersections = sorted(
-        df["Intersection"].dropna().astype(str).unique().tolist()
-    )
-
-    selected_intersection = st.selectbox(
-        "Choose an intersection",
-        intersections
-    )
-
-    subset = df[
-        df["Intersection"].astype(str) == selected_intersection
-    ].copy()
-
-    directions = sorted(
-        subset["Direction"].dropna().astype(str).unique().tolist()
-    )
-
-    selected_direction = st.selectbox(
-        "Choose direction",
-        ["All directions"] + directions
-    )
+    if selected_intersection != "All intersections":
+        view = view[view["Intersection"] == selected_intersection]
 
     if selected_direction != "All directions":
-        subset = subset[
-            subset["Direction"].astype(str) == selected_direction
-        ]
+        view = view[view["Direction"] == selected_direction]
 
-    if subset.empty:
+    if view.empty:
         st.warning("No records match these filters.")
         st.stop()
 
-    total_count = subset["new_vehicles"].sum()
-    average_count = subset["new_vehicles"].mean()
+    # KPI cards
+    total_records = len(view)
+    recorded_count = view["new_vehicles"].sum()
+    avg_count = view["new_vehicles"].mean()
+    high_pct = (view["Congestion"] == "High").mean() * 100
 
-    hourly_totals = (
-        subset.groupby("Hour")["new_vehicles"]
-        .sum()
-        .sort_index()
+    k1, k2, k3, k4 = st.columns(4)
+
+    k1.metric("Traffic observations", f"{total_records:,}")
+    k2.metric("Recorded vehicle-count total", f"{recorded_count:,.0f}")
+    k3.metric("Average count / record", f"{avg_count:.1f}")
+    k4.metric("High-category records", f"{high_pct:.1f}%")
+
+    st.caption(
+        "Totals are sums of recorded observations, not unique vehicles "
+        "across the entire city. Multiple cameras and directions may overlap."
     )
 
-    busiest_hour = int(hourly_totals.idxmax())
+    st.markdown("---")
 
-    c1, c2, c3 = st.columns(3)
-
-    c1.metric("Sum of Recorded Counts", f"{total_count:,.0f}")
-    c2.metric("Average per Record", f"{average_count:.1f}")
-    c3.metric("Busiest Recorded Hour", f"{busiest_hour:02d}:00")
-
-    left, right = st.columns(2)
+    left, right = st.columns([1.55, 1])
 
     with left:
-        st.markdown("#### Vehicle counts by recorded hour")
-        st.bar_chart(hourly_totals, color="#20bfa9")
-
-        observed_hours = sorted(
-            subset["Hour"].dropna().astype(int).unique()
+        panel_heading(
+            "Traffic through the day",
+            "Average recorded vehicle count by hour"
         )
 
-        st.caption(
-            "Recorded hours: "
-            + ", ".join(f"{h:02d}:00" for h in observed_hours)
-            + ". Missing hours indicate unavailable observations."
-        )
+        if "Hour" in view.columns:
+            hourly = (
+                view.groupby("Hour", as_index=False)["new_vehicles"]
+                .mean()
+                .sort_values("Hour")
+            )
+
+            fig = px.area(
+                hourly,
+                x="Hour",
+                y="new_vehicles",
+                markers=True,
+                labels={
+                    "Hour": "Hour of day",
+                    "new_vehicles": "Average count"
+                }
+            )
+            fig.update_traces(
+                line=dict(color="#48d7e8", width=3),
+                fillcolor="rgba(72,215,232,0.12)",
+                marker=dict(size=7)
+            )
+            fig.update_xaxes(dtick=1)
+            st.plotly_chart(
+                style_chart(fig, 360),
+                use_container_width=True
+            )
+        else:
+            st.info("Timestamp information is unavailable.")
 
     with right:
-        st.markdown("#### Vehicle type breakdown")
-
-        vehicle_columns = [
-            col for col in VEHICLE_COLUMNS if col in subset.columns
-        ]
-
-        vehicle_totals = (
-            subset[vehicle_columns]
-            .sum()
-            .rename(VEHICLE_LABELS)
+        panel_heading(
+            "Congestion mix",
+            "Distribution of recorded categories"
         )
-
-        st.bar_chart(vehicle_totals, color="#4f8cff")
-
-    left, right = st.columns(2)
-
-    with left:
-        st.markdown("#### Count-based category distribution")
 
         category_counts = (
-            subset["Congestion"].astype(str)
-            .value_counts()
-            .reindex(CATEGORIES, fill_value=0)
+            view["Congestion"].value_counts()
+            .reindex(["Low", "Medium", "High"], fill_value=0)
+            .reset_index()
+        )
+        category_counts.columns = ["Category", "Records"]
+
+        fig = px.pie(
+            category_counts,
+            names="Category",
+            values="Records",
+            hole=0.68,
+            color="Category",
+            color_discrete_map=CHART_COLORS
+        )
+        fig.update_traces(
+            textposition="outside",
+            textinfo="percent",
+            marker=dict(line=dict(color="#0b1120", width=3))
+        )
+        fig.update_layout(showlegend=True)
+        st.plotly_chart(
+            style_chart(fig, 360),
+            use_container_width=True
         )
 
-        st.bar_chart(category_counts, color="#e5a94d")
+    left, right = st.columns(2)
 
-        st.caption(
-            "This chart counts records in each category. It does not measure "
-            "the actual number of hours a road was congested."
+    with left:
+        panel_heading(
+            "Vehicle composition",
+            "Sum of recorded counts by vehicle type"
+        )
+
+        vehicle_columns = [
+            "car_change", "motorbike_change",
+            "bus_change", "truck_change"
+        ]
+
+        vehicle_values = (
+            view[vehicle_columns].sum()
+            .rename_axis("Vehicle type")
+            .reset_index(name="Recorded count")
+        )
+        vehicle_values["Vehicle type"] = vehicle_values[
+            "Vehicle type"
+        ].map({
+            "car_change": "Cars",
+            "motorbike_change": "Motorbikes",
+            "bus_change": "Buses",
+            "truck_change": "Trucks"
+        })
+
+        fig = px.bar(
+            vehicle_values,
+            x="Vehicle type",
+            y="Recorded count",
+            color="Vehicle type",
+            color_discrete_map={
+                "Cars": "#48d7e8",
+                "Motorbikes": "#7297ff",
+                "Buses": "#b99aff",
+                "Trucks": "#f5a76b"
+            }
+        )
+        fig.update_layout(showlegend=False)
+        st.plotly_chart(
+            style_chart(fig, 320),
+            use_container_width=True
         )
 
     with right:
-        st.markdown("#### Daily recorded traffic")
-
-        daily_totals = (
-            subset.groupby(subset["Timestamp"].dt.date)["new_vehicles"]
-            .sum()
-            .sort_index()
+        panel_heading(
+            "Busiest intersections",
+            "Ranked by average recorded count per observation"
         )
 
-        st.line_chart(daily_totals, color="#a78bfa")
-
-        st.caption(
-            "Daily totals include only intervals available in the dataset "
-            "and may not represent a complete 24-hour day."
+        location_data = (
+            view.groupby("Intersection", as_index=False)
+            .agg(
+                Average_Count=("new_vehicles", "mean"),
+                Observations=("new_vehicles", "size")
+            )
+            .sort_values("Average_Count", ascending=True)
         )
 
-    st.markdown("#### Filtered data preview")
+        fig = px.bar(
+            location_data,
+            x="Average_Count",
+            y="Intersection",
+            orientation="h",
+            color="Average_Count",
+            color_continuous_scale=["#23465e", "#48d7e8"],
+            hover_data=["Observations"]
+        )
+        fig.update_layout(coloraxis_showscale=False)
+        st.plotly_chart(
+            style_chart(fig, 320),
+            use_container_width=True
+        )
+
+    st.markdown("---")
+    panel_heading("Recent observations", "Latest records in the selected view")
+
+    if "Timestamp" in view.columns:
+        recent = view.sort_values("Timestamp", ascending=False).head(10)
+    else:
+        recent = view.tail(10)
+
+    display_cols = [
+        c for c in [
+            "Timestamp", "Intersection", "Direction",
+            "new_vehicles", "Congestion"
+        ] if c in recent.columns
+    ]
 
     st.dataframe(
-        subset.sort_values("Timestamp", ascending=False).head(100),
+        recent[display_cols],
         use_container_width=True,
         hide_index=True
     )
 
+
+# --------------------------------------------------
+# PAGE 2: TRAFFIC EXPLORER
+# --------------------------------------------------
+elif page == "Traffic Explorer":
+
+    st.markdown("""
+    <div class="hero">
+        <div class="eyebrow">INTERACTIVE DATA EXPLORATION</div>
+        <div class="hero-title">Traffic Explorer</div>
+        <div class="hero-subtitle">
+            Filter the historical dataset and compare traffic patterns
+            by location, direction, date, time, and vehicle type.
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown("### Filter your data")
+
+    f1, f2, f3 = st.columns(3)
+
+    with f1:
+        location_options = sorted(df["Intersection"].unique().tolist())
+        locations = st.multiselect(
+            "Intersections",
+            location_options,
+            default=location_options
+        )
+
+    with f2:
+        direction_options = sorted(df["Direction"].unique().tolist())
+        selected_directions = st.multiselect(
+            "Directions",
+            direction_options,
+            default=direction_options
+        )
+
+    with f3:
+        category_options = ["Low", "Medium", "High"]
+        selected_categories = st.multiselect(
+            "Congestion categories",
+            category_options,
+            default=category_options
+        )
+
+    filtered = df[
+        df["Intersection"].isin(locations)
+        & df["Direction"].isin(selected_directions)
+        & df["Congestion"].isin(selected_categories)
+    ].copy()
+
+    if "Timestamp" in filtered.columns and filtered["Timestamp"].notna().any():
+        valid_dates = filtered["Timestamp"].dropna()
+
+        min_date = valid_dates.min().date()
+        max_date = valid_dates.max().date()
+
+        date_range = st.date_input(
+            "Date range",
+            value=(min_date, max_date),
+            min_value=min_date,
+            max_value=max_date
+        )
+
+        if isinstance(date_range, (tuple, list)) and len(date_range) == 2:
+            start, end = date_range
+            filtered = filtered[
+                (filtered["Timestamp"].dt.date >= start)
+                & (filtered["Timestamp"].dt.date <= end)
+            ]
+
+    if filtered.empty:
+        st.warning("No observations match the selected filters.")
+        st.stop()
+
+    st.markdown("---")
+
+    a, b, c = st.columns(3)
+    a.metric("Filtered observations", f"{len(filtered):,}")
+    b.metric("Average count", f"{filtered['new_vehicles'].mean():.2f}")
+    c.metric("Locations selected", f"{filtered['Intersection'].nunique()}")
+
+    st.markdown("---")
+
+    left, right = st.columns(2)
+
+    with left:
+        panel_heading(
+            "Hourly traffic pattern",
+            "Compare average counts by hour"
+        )
+
+        hourly = (
+            filtered.groupby("Hour", as_index=False)["new_vehicles"]
+            .mean()
+            .sort_values("Hour")
+        )
+
+        fig = px.line(
+            hourly,
+            x="Hour",
+            y="new_vehicles",
+            markers=True,
+            labels={
+                "Hour": "Hour of day",
+                "new_vehicles": "Average count"
+            }
+        )
+        fig.update_traces(line=dict(color="#48d7e8", width=3))
+        fig.update_xaxes(dtick=1)
+        st.plotly_chart(
+            style_chart(fig, 340),
+            use_container_width=True
+        )
+
+    with right:
+        panel_heading(
+            "Traffic by location",
+            "Average count for each selected intersection"
+        )
+
+        location_hour = (
+            filtered.groupby("Intersection", as_index=False)
+            ["new_vehicles"].mean()
+            .sort_values("new_vehicles", ascending=False)
+        )
+
+        fig = px.bar(
+            location_hour,
+            x="Intersection",
+            y="new_vehicles",
+            color="Intersection",
+            labels={"new_vehicles": "Average count"}
+        )
+        fig.update_layout(showlegend=False)
+        st.plotly_chart(
+            style_chart(fig, 340),
+            use_container_width=True
+        )
+
+    left, right = st.columns(2)
+
+    with left:
+        panel_heading(
+            "Vehicle type comparison",
+            "Recorded counts within the selected filters"
+        )
+
+        vehicle_cols = [
+            "car_change", "motorbike_change",
+            "bus_change", "truck_change"
+        ]
+
+        vehicle_totals = (
+            filtered[vehicle_cols].sum()
+            .rename_axis("Vehicle")
+            .reset_index(name="Count")
+        )
+
+        vehicle_totals["Vehicle"] = vehicle_totals["Vehicle"].map({
+            "car_change": "Cars",
+            "motorbike_change": "Motorbikes",
+            "bus_change": "Buses",
+            "truck_change": "Trucks"
+        })
+
+        fig = px.bar(
+            vehicle_totals,
+            x="Vehicle",
+            y="Count",
+            color="Vehicle"
+        )
+        fig.update_layout(showlegend=False)
+        st.plotly_chart(
+            style_chart(fig, 320),
+            use_container_width=True
+        )
+
+    with right:
+        panel_heading(
+            "Hourly category distribution",
+            "Number of observations in each category by hour"
+        )
+
+        heat_data = (
+            filtered.groupby(["Hour", "Congestion"])
+            .size()
+            .reset_index(name="Records")
+        )
+
+        if not heat_data.empty:
+            heat_pivot = heat_data.pivot(
+                index="Congestion",
+                columns="Hour",
+                values="Records"
+            ).fillna(0)
+
+            heat_pivot = heat_pivot.reindex(
+                ["Low", "Medium", "High"]
+            ).fillna(0)
+
+            fig = px.imshow(
+                heat_pivot,
+                aspect="auto",
+                color_continuous_scale=["#17243a", "#23657b", "#48d7e8"],
+                labels=dict(
+                    x="Hour of day",
+                    y="Category",
+                    color="Records"
+                )
+            )
+            st.plotly_chart(
+                style_chart(fig, 320),
+                use_container_width=True
+            )
+
+    st.markdown("---")
+    panel_heading("Filtered records", "Inspect and export the data")
+
+    st.dataframe(
+        filtered.head(1000),
+        use_container_width=True,
+        hide_index=True
+    )
+
+    csv = filtered.to_csv(index=False).encode("utf-8")
     st.download_button(
-        "⬇️ Download filtered data as CSV",
-        data=subset.to_csv(index=False).encode("utf-8"),
+        "⬇ Download filtered CSV",
+        data=csv,
         file_name="filtered_traffic_data.csv",
         mime="text/csv"
     )
 
+    st.caption("The preview shows at most 1,000 rows; the CSV export contains all filtered rows.")
 
-# =====================================================
-# 10. CONGESTION PREDICTION
-# =====================================================
-elif selected_page == "🤖 Congestion Prediction":
 
-    st.markdown(
-        '<div class="section-heading">Estimate a Traffic Category</div>',
-        unsafe_allow_html=True
-    )
+# --------------------------------------------------
+# PAGE 3: CONGESTION PREDICTION
+# --------------------------------------------------
+elif page == "Congestion Prediction":
 
-    st.info(
-        "This is a historical-data-based estimate. The application does not "
-        "read live cameras, current road speeds, or real-time traffic feeds."
-    )
+    st.markdown("""
+    <div class="hero">
+        <div class="eyebrow">MACHINE LEARNING WORKSPACE</div>
+        <div class="hero-title">Congestion Prediction</div>
+        <div class="hero-subtitle">
+            Estimate a congestion category for a selected intersection,
+            direction, and time using the trained model when available.
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
-    intersections = sorted(
-        df["Intersection"].dropna().astype(str).unique().tolist()
-    )
+    if model is None:
+        st.warning(
+            "The trained model could not be loaded. Check that "
+            "traffic_congestion_model.joblib exists in your repository."
+        )
 
-    directions = sorted(
-        df["Direction"].dropna().astype(str).unique().tolist()
-    )
+    st.markdown("### Configure a prediction")
 
     with st.form("prediction_form"):
+        c1, c2 = st.columns(2)
 
-        st.markdown("#### 1. Select location and time")
-
-        col1, col2 = st.columns(2)
-
-        with col1:
-            selected_intersection = st.selectbox(
+        with c1:
+            prediction_location = st.selectbox(
                 "Intersection",
-                intersections
+                sorted(df["Intersection"].unique().tolist())
             )
 
-            hour = st.slider(
+            prediction_direction = st.selectbox(
+                "Direction",
+                sorted(df["Direction"].unique().tolist())
+            )
+
+            prediction_hour = st.slider(
                 "Hour of day",
                 min_value=0,
                 max_value=23,
-                value=18
+                value=18,
+                format="%d:00"
             )
 
-        with col2:
-            selected_direction = st.selectbox(
-                "Direction",
-                directions
-            )
+        with c2:
+            day_name_to_num = {
+                "Monday": 0, "Tuesday": 1, "Wednesday": 2,
+                "Thursday": 3, "Friday": 4, "Saturday": 5,
+                "Sunday": 6
+            }
 
-            day_name = st.selectbox(
+            prediction_day_name = st.selectbox(
                 "Day of week",
-                DAY_NAMES,
-                index=2
+                list(day_name_to_num.keys()),
+                index=4
             )
 
-        day_of_week = DAY_NAMES.index(day_name)
-
-        matching_history = df[
-            (df["Intersection"].astype(str) == selected_intersection)
-            & (df["Direction"].astype(str) == selected_direction)
-            & (df["Hour"] == hour)
-            & (df["DayOfWeek"] == day_of_week)
-        ]
-
-        if not matching_history.empty:
-            automatic_count = float(
-                matching_history["PreviousTraffic"].median()
+            use_custom_count = st.checkbox(
+                "Enter a custom previous traffic count"
             )
-            estimate_note = (
-                "Estimated from historical records matching the selected "
-                "intersection, direction, hour, and weekday."
-            )
-        else:
-            fallback_history = df[
-                (df["Intersection"].astype(str) == selected_intersection)
-                & (df["Direction"].astype(str) == selected_direction)
+
+            historical = df[
+                (df["Intersection"] == prediction_location)
+                & (df["Direction"] == prediction_direction)
+                & (df["Hour"] == prediction_hour)
+                & (df["DayOfWeek"] == day_name_to_num[prediction_day_name])
             ]
 
-            if not fallback_history.empty:
-                automatic_count = float(
-                    fallback_history["PreviousTraffic"].median()
-                )
-                estimate_note = (
-                    "No exact time/day match was found. Using the historical "
-                    "median for this intersection and direction."
+            if historical.empty:
+                historical = df[
+                    (df["Intersection"] == prediction_location)
+                    & (df["Direction"] == prediction_direction)
+                ]
+
+            if historical.empty:
+                default_previous = float(df["new_vehicles"].median())
+            else:
+                default_previous = float(historical["new_vehicles"].median())
+
+            if use_custom_count:
+                previous_traffic = st.number_input(
+                    "Previous traffic count",
+                    min_value=0.0,
+                    value=round(default_previous, 1),
+                    step=1.0
                 )
             else:
-                automatic_count = float(
-                    df["PreviousTraffic"].median()
+                previous_traffic = st.number_input(
+                    "Historical typical count (editable)",
+                    min_value=0.0,
+                    value=round(default_previous, 1),
+                    step=1.0
                 )
-                estimate_note = (
-                    "No location-specific match was found. Using the "
-                    "overall historical median."
-                )
-
-        st.markdown("#### 2. Previous five-minute vehicle count")
-
-        use_automatic = st.checkbox(
-            "Use estimated historical count automatically",
-            value=True
-        )
-
-        if use_automatic:
-            previous_traffic = automatic_count
-
-            st.metric(
-                "Estimated previous-interval count",
-                f"{previous_traffic:.0f}"
-            )
-
-            st.caption(estimate_note + " This is not a live count.")
-
-        else:
-            previous_traffic = st.number_input(
-                "Enter previous five-minute vehicle count",
-                min_value=0.0,
-                value=max(0.0, automatic_count),
-                step=1.0
-            )
 
         submitted = st.form_submit_button(
-            "✨ Predict category",
+            "⚡ Estimate congestion",
             use_container_width=True
         )
 
     if submitted:
+        day_num = day_name_to_num[prediction_day_name]
 
-        input_data = pd.DataFrame([{
-            "Hour": int(hour),
-            "DayOfWeek": int(day_of_week),
-            "IsWeekend": int(day_of_week >= 5),
-            "PreviousTraffic": float(previous_traffic),
-            "Intersection": selected_intersection,
-            "Direction": selected_direction
+        input_df = pd.DataFrame([{
+            "Intersection": prediction_location,
+            "Direction": prediction_direction,
+            "Hour": int(prediction_hour),
+            "DayOfWeek": int(day_num),
+            "IsWeekend": int(day_num >= 5),
+            "PreviousTraffic": float(previous_traffic)
         }])
 
-        try:
-            prediction = model.predict(input_data)[0]
+        prediction = None
+        probabilities = None
+        prediction_error = None
 
-            probabilities = None
-            model_classes = None
+        if model is not None:
+            try:
+                prediction = str(model.predict(input_df)[0]).title()
 
-            if hasattr(model, "predict_proba"):
-                probabilities = model.predict_proba(input_data)[0]
+                if hasattr(model, "predict_proba"):
+                    probs = model.predict_proba(input_df)[0]
+                    classes = getattr(model, "classes_", None)
 
-                if hasattr(model, "named_steps"):
-                    classifier = model.named_steps.get("classifier")
+                    if classes is None and hasattr(model, "named_steps"):
+                        final_step = list(model.named_steps.values())[-1]
+                        classes = getattr(final_step, "classes_", None)
 
-                    if (
-                        classifier is not None
-                        and hasattr(classifier, "classes_")
-                    ):
-                        model_classes = list(classifier.classes_)
+                    if classes is not None:
+                        probabilities = {
+                            str(label).title(): float(prob)
+                            for label, prob in zip(classes, probs)
+                        }
+            except Exception as exc:
+                prediction_error = str(exc)
 
-                if (
-                    model_classes is None
-                    and hasattr(model, "classes_")
-                ):
-                    model_classes = list(model.classes_)
+        if prediction is not None:
+            color = {
+                "Low": "#48d7a8",
+                "Medium": "#f7bd59",
+                "High": "#ff7185"
+            }.get(prediction, "#48d7e8")
 
-            colors = {
-                "Low": "#20bfa9",
-                "Medium": "#e5a94d",
-                "High": "#ff6b6b"
-            }
+            st.markdown("---")
+            st.markdown("### Estimated result")
 
-            result_color = colors.get(prediction, "#66e3ce")
-
-            st.markdown(f"""
-            <div class="result-card">
-                <div class="result-caption">PREDICTED CATEGORY</div>
-                <div class="result-value" style="color:{result_color}">
-                    {prediction}
+            st.markdown(
+                f"""
+                <div style="
+                    padding:26px;
+                    border:1px solid {color};
+                    border-radius:17px;
+                    background:linear-gradient(120deg,#14243a,#111b2d);
+                    margin-bottom:15px;">
+                    <div style="color:#9fb1c8;font-size:12px;
+                                letter-spacing:1.5px;text-transform:uppercase;">
+                        MODEL PREDICTION
+                    </div>
+                    <div style="color:{color};font-size:36px;
+                                font-weight:700;margin-top:8px;">
+                        {prediction}
+                    </div>
+                    <div style="color:#9fb1c8;font-size:13px;margin-top:8px;">
+                        {prediction_location} · {prediction_direction} ·
+                        {prediction_hour:02d}:00 · {prediction_day_name}
+                    </div>
                 </div>
-                <div class="result-caption">
-                    {selected_intersection} · {selected_direction}
-                    · {hour:02d}:00 · {day_name}
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
+                """,
+                unsafe_allow_html=True
+            )
 
-            if probabilities is not None and model_classes is not None:
-
-                probability_data = pd.DataFrame({
-                    "Category": model_classes,
-                    "Estimated probability (%)": [
-                        float(p) * 100 for p in probabilities
-                    ]
-                }).set_index("Category")
-
-                probability_data = probability_data.reindex(
-                    CATEGORIES,
-                    fill_value=0
+            if probabilities:
+                panel_heading(
+                    "Model confidence scores",
+                    "Predicted class probabilities, not guaranteed accuracy"
                 )
 
-                st.markdown("#### Probability assigned to each category")
+                prob_df = pd.DataFrame({
+                    "Category": list(probabilities.keys()),
+                    "Probability": list(probabilities.values())
+                })
 
-                st.bar_chart(
-                    probability_data,
-                    horizontal=True,
-                    color="#20bfa9"
+                fig = px.bar(
+                    prob_df,
+                    x="Category",
+                    y="Probability",
+                    color="Category",
+                    color_discrete_map=CHART_COLORS,
+                    text=prob_df["Probability"].map(
+                        lambda x: f"{x:.1%}"
+                    )
+                )
+                fig.update_yaxes(
+                    tickformat=".0%",
+                    range=[0, 1]
+                )
+                fig.update_layout(showlegend=False)
+                st.plotly_chart(
+                    style_chart(fig, 300),
+                    use_container_width=True
                 )
 
-                predicted_probability = None
+            st.info(
+                "This is a model-based estimate from historical data, "
+                "not a live traffic forecast. The congestion labels in this "
+                "project are derived from vehicle-count thresholds, so they "
+                "should not be interpreted as measured road speed or delay."
+            )
 
-                if prediction in model_classes:
-                    predicted_probability = float(
-                        probabilities[model_classes.index(prediction)]
-                    )
+        else:
+            st.error(
+                "Prediction failed. The saved model may expect different "
+                "feature names or input columns."
+            )
+            if prediction_error:
+                with st.expander("Technical details"):
+                    st.code(prediction_error)
 
-                if predicted_probability is not None:
-                    st.write(
-                        "Probability assigned to the predicted category: "
-                        f"**{predicted_probability:.1%}**"
-                    )
-
-                    if predicted_probability < 0.60:
-                        st.warning(
-                            "The highest class probability is below 60%. "
-                            "Treat this estimate cautiously."
-                        )
-                    else:
-                        st.caption(
-                            "A higher model probability is not a guarantee "
-                            "of real-world accuracy. Probability calibration "
-                            "has not been established here."
-                        )
-
-            with st.expander("View inputs sent to the model"):
-                st.dataframe(input_data, use_container_width=True)
-
-        except Exception as error:
-            st.error(f"Prediction failed: {error}")
             st.caption(
-                "The saved model must use the same feature names and "
-                "preprocessing expected by this application."
+                "Check the model's training feature names and ensure they "
+                "match the input fields used by this page."
             )
 
 
-# =====================================================
-# 11. ABOUT PROJECT
-# =====================================================
-elif selected_page == "ℹ️ About Project":
-
-    st.markdown(
-        '<div class="section-heading">About This Project</div>',
-        unsafe_allow_html=True
-    )
-
-    st.write(
-        "Smart City Traffic Intelligence explores historical traffic counts "
-        "from selected Pune intersections and uses a machine-learning "
-        "classifier to estimate a count-based traffic category."
-    )
-
-    col1, col2 = st.columns(2)
-
-    with col1:
-        st.markdown("""
-        <div class="info-card">
-            <h3>📂 Dataset</h3>
-            <p>
-                Historical traffic-camera observations from January 2023.
-                Processed records represent five-minute intervals for
-                individual cameras and directions.
-            </p>
-            <p><strong>Source:</strong> Heterogeneous Traffic Count Dataset, Pune.</p>
-        </div>
-        """, unsafe_allow_html=True)
-
-    with col2:
-        st.markdown("""
-        <div class="info-card">
-            <h3>🧠 Machine Learning</h3>
-            <p>
-                A saved Decision Tree pipeline uses time, location,
-                direction, and previous traffic-count features to estimate
-                Low, Medium, or High categories.
-            </p>
-            <p><strong>Previously reported test accuracy:</strong>
-            approximately 87%.</p>
-        </div>
-        """, unsafe_allow_html=True)
-
-    st.markdown("#### Project workflow")
+# --------------------------------------------------
+# PAGE 4: ABOUT PROJECT
+# --------------------------------------------------
+elif page == "About Project":
 
     st.markdown("""
-    1. Clean and process the traffic-camera data.
-    2. Aggregate observations into five-minute intervals.
-    3. Explore hourly patterns and vehicle-type counts.
-    4. Train and evaluate a classification model.
-    5. Present the analysis and predictions in this dashboard.
-    """)
+    <div class="hero">
+        <div class="eyebrow">PROJECT OVERVIEW</div>
+        <div class="hero-title">Inside the intelligence layer</div>
+        <div class="hero-subtitle">
+            A student data-science project exploring historical traffic
+            patterns and machine-learning-based congestion categories.
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
-    st.warning(
-        "The categories are derived from vehicle-count thresholds, not "
-        "ground-truth congestion measurements such as road speed or travel "
-        "time. The dataset is historical, not live. The approximately 87% "
-        "accuracy is a previously reported test result and should be "
-        "confirmed against the model's evaluation."
+    st.markdown("### What this platform does")
+
+    c1, c2 = st.columns(2)
+
+    with c1:
+        st.markdown("""
+        <div class="insight-card">
+            <div class="insight-title">01 · DATA PROCESSING</div>
+            <div class="insight-value">Clean & organise</div>
+            <div class="insight-note">
+                Reads the processed traffic CSV, handles missing numeric
+                values, and extracts time-based information where possible.
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("<br>", unsafe_allow_html=True)
+
+        st.markdown("""
+        <div class="insight-card">
+            <div class="insight-title">02 · EXPLORATORY ANALYSIS</div>
+            <div class="insight-value">Find patterns</div>
+            <div class="insight-note">
+                Compares hourly traffic, intersections, vehicle types,
+                and the distribution of congestion categories.
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with c2:
+        st.markdown("""
+        <div class="insight-card">
+            <div class="insight-title">03 · MACHINE LEARNING</div>
+            <div class="insight-value">Estimate categories</div>
+            <div class="insight-note">
+                Uses the saved classification model when available to
+                estimate Low, Medium, or High congestion.
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("<br>", unsafe_allow_html=True)
+
+        st.markdown("""
+        <div class="insight-card">
+            <div class="insight-title">04 · INTERACTIVE DASHBOARD</div>
+            <div class="insight-value">Explore & export</div>
+            <div class="insight-note">
+                Supports filtering, interactive chart exploration,
+                record previews, and CSV downloads.
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    st.markdown("---")
+    st.markdown("### Dataset details")
+
+    st.write(
+        "The project uses a processed version of the Heterogeneous Traffic "
+        "Count Dataset, Pune. The source dataset contains traffic observations "
+        "from selected intersections and camera directions."
     )
 
+    st.markdown(
+        "[Open the original dataset on Mendeley Data](https://data.mendeley.com/datasets/xnf2k6n288/1)"
+    )
 
-# =====================================================
-# 12. FOOTER
-# =====================================================
-st.divider()
+    st.markdown("### Important limitations")
 
-st.caption(
-    "Smart City Traffic Intelligence | Academic data science project | "
-    "Historical Pune traffic data | Not a live traffic monitoring service"
-)
+    st.warning("""
+    - This dashboard is not connected to a live traffic feed.
+    - Weather and rainfall are not displayed because the current app does
+      not integrate verified weather observations.
+    - Vehicle-count totals across cameras or directions may overlap.
+    - Congestion categories are based on vehicle-count thresholds and do
+      not directly measure speed, travel time, or road capacity.
+    - Model predictions depend on the training data and feature definitions.
+    """)
+
+    st.markdown("---")
+    st.markdown(
+        '<div class="small-note">'
+        'SMART CITY TRAFFIC INTELLIGENCE · DATA SCIENCE PROJECT'
+        '</div>',
+        unsafe_allow_html=True
+    )
