@@ -63,33 +63,27 @@ p, label, .stMarkdown {
     color: #e8eef8;
 }
 
-/* Clean sidebar navigation: hide radio dots and style options as menu rows */
-[data-testid="stSidebar"] [role="radiogroup"] {
-    gap: 5px;
-}
-[data-testid="stSidebar"] [role="radiogroup"] > label {
-    padding: 9px 11px;
-    border: 1px solid transparent;
+/* Sidebar navigation buttons: no radio controls or selection dots */
+[data-testid="stSidebar"] div.stButton > button {
+    width: 100%;
+    text-align: left;
+    justify-content: flex-start;
     border-radius: 9px;
+    padding: 0.55rem 0.75rem;
+    margin: 2px 0;
+    border: 1px solid transparent;
     background: transparent;
-    transition: background .15s ease, border-color .15s ease;
+    color: #e8eef8;
 }
-[data-testid="stSidebar"] [role="radiogroup"] > label:hover {
+[data-testid="stSidebar"] div.stButton > button:hover {
     background: #17263b;
     border-color: #2b405a;
+    color: #55dce8;
 }
-[data-testid="stSidebar"] [role="radiogroup"] > label > div:first-child {
-    display: none !important;
-}
-[data-testid="stSidebar"] [role="radiogroup"] > label > div:last-child {
-    margin-left: 0 !important;
-}
-[data-testid="stSidebar"] [role="radiogroup"] label:has(input:checked) {
+[data-testid="stSidebar"] div.stButton > button[kind="primary"] {
     background: linear-gradient(90deg, #17354a, #14283d);
     border-color: #31566b;
-}
-[data-testid="stSidebar"] [role="radiogroup"] label:has(input:checked) p {
-    color: #55dce8 !important;
+    color: #55dce8;
 }
 
 [data-testid="stMetric"] {
@@ -425,16 +419,27 @@ with st.sidebar:
     )
     st.markdown("---")
 
-    page = st.radio(
-        "NAVIGATION",
-        [
-            "Overview",
-            "Traffic Explorer",
-            "Congestion Prediction",
-            "About Project"
-        ],
-        key="navigation"
-    )
+    st.markdown("**NAVIGATION**")
+    pages = [
+        "Overview",
+        "Traffic Explorer",
+        "Congestion Prediction",
+        "About Project"
+    ]
+    if "navigation" not in st.session_state or st.session_state["navigation"] not in pages:
+        st.session_state["navigation"] = "Overview"
+
+    for nav_page in pages:
+        if st.button(
+            nav_page,
+            key=f"nav_{nav_page.lower().replace(' ', '_')}",
+            use_container_width=True,
+            type="primary" if st.session_state["navigation"] == nav_page else "secondary"
+        ):
+            st.session_state["navigation"] = nav_page
+            st.rerun()
+
+    page = st.session_state["navigation"]
 
     st.markdown("---")
     st.markdown("### Dataset snapshot")
