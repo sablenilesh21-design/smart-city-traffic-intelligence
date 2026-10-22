@@ -28,187 +28,231 @@ st.markdown("""
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
 
 :root {
-    --bg: #0a1020;
-    --panel: #111c2e;
-    --panel-soft: #142238;
-    --border: #263951;
-    --text: #edf4ff;
-    --muted: #91a5bf;
-    --cyan: #45d9e8;
+    --bg: #0b1120;
+    --panel: #121c30;
+    --border: #26354c;
+    --text: #e8eef8;
+    --muted: #94a5bd;
+    --cyan: #48d7e8;
+    --blue: #7297ff;
 }
 
 .stApp {
     background:
-        radial-gradient(ellipse at 10% -8%, rgba(36, 77, 116, .36), transparent 38%),
-        radial-gradient(ellipse at 95% 5%, rgba(22, 94, 104, .16), transparent 30%),
-        #0a1020;
+        radial-gradient(ellipse at 10% 0%, #142640 0%, transparent 40%),
+        #0b1120;
     color: var(--text);
     font-family: 'DM Sans', sans-serif;
 }
-.block-container {
-    padding-top: 1.55rem;
-    padding-bottom: 2rem;
-    max-width: 1600px;
-}
-h1, h2, h3, h4 {
+
+h1, h2, h3 {
     font-family: 'Space Grotesk', sans-serif !important;
-    color: #f2f7ff !important;
-    letter-spacing: -.35px;
+    color: #f1f6ff !important;
 }
-p, label, .stMarkdown { color: #d5dfed; }
 
-/* Sidebar */
+p, label, .stMarkdown {
+    color: #d5deed;
+}
+
 [data-testid="stSidebar"] {
-    background: linear-gradient(180deg, #0e192b 0%, #0b1424 100%);
-    border-right: 1px solid #24354c;
+    background: #0e1728;
+    border-right: 1px solid #25334a;
 }
-[data-testid="stSidebar"] > div { padding-top: 1.25rem; }
-[data-testid="stSidebar"] * { color: #e7effb; }
-[data-testid="stSidebar"] [data-testid="stMetric"] {
-    padding: 12px 13px;
-    min-height: auto;
-}
-[data-testid="stSidebar"] [data-testid="stMetricValue"] { font-size: 1.45rem; }
-[data-testid="stSidebar"] hr { margin: 1rem 0; }
 
-/* KPI cards */
+[data-testid="stSidebar"] * {
+    color: #e8eef8;
+}
+
+/* Clean sidebar navigation: hide radio dots and style options as menu rows */
+[data-testid="stSidebar"] [role="radiogroup"] {
+    gap: 5px;
+}
+[data-testid="stSidebar"] [role="radiogroup"] > label {
+    padding: 9px 11px;
+    border: 1px solid transparent;
+    border-radius: 9px;
+    background: transparent;
+    transition: background .15s ease, border-color .15s ease;
+}
+[data-testid="stSidebar"] [role="radiogroup"] > label:hover {
+    background: #17263b;
+    border-color: #2b405a;
+}
+[data-testid="stSidebar"] [role="radiogroup"] > label > div:first-child {
+    display: none !important;
+}
+[data-testid="stSidebar"] [role="radiogroup"] > label > div:last-child {
+    margin-left: 0 !important;
+}
+[data-testid="stSidebar"] [role="radiogroup"] label:has(input:checked) {
+    background: linear-gradient(90deg, #17354a, #14283d);
+    border-color: #31566b;
+}
+[data-testid="stSidebar"] [role="radiogroup"] label:has(input:checked) p {
+    color: #55dce8 !important;
+}
+
 [data-testid="stMetric"] {
-    background: linear-gradient(145deg, rgba(23, 39, 61, .98), rgba(16, 27, 45, .98));
-    border: 1px solid #2a3e59;
-    border-radius: 13px;
-    padding: 15px 17px;
-    min-height: 96px;
-    box-shadow: 0 5px 18px rgba(0, 0, 0, .08);
+    background: linear-gradient(145deg, #17243a, #111b2d);
+    border: 1px solid #2b3c56;
+    border-radius: 15px;
+    padding: 18px 18px;
 }
-[data-testid="stMetricLabel"] {
-    color: #9eb1ca !important;
-    font-size: .78rem !important;
-}
-[data-testid="stMetricValue"] {
-    color: #f4f8ff !important;
-    font-family: 'Space Grotesk', sans-serif;
-    font-size: clamp(1.35rem, 1.8vw, 1.85rem) !important;
-}
-[data-testid="stMetricDelta"] { color: #45d9e8 !important; }
 
-/* Inputs and buttons */
+[data-testid="stMetricLabel"] {
+    color: #9fb0c8 !important;
+}
+
+[data-testid="stMetricValue"] {
+    color: #f2f7ff !important;
+    font-family: 'Space Grotesk', sans-serif;
+}
+
+[data-testid="stMetricDelta"] {
+    color: #48d7e8 !important;
+}
+
+div[data-testid="stVerticalBlockBorderWrapper"] {
+    border-color: #26354c !important;
+    border-radius: 15px;
+}
+
+.stButton > button {
+    border-radius: 10px;
+    border: 1px solid #344964;
+    background: #17263c;
+    color: #eef6ff;
+    min-height: 42px;
+    font-weight: 600;
+}
+
+.stButton > button:hover {
+    border-color: #48d7e8;
+    color: #48d7e8;
+}
+
+.stDownloadButton > button {
+    background: #19384a;
+    color: white;
+    border-radius: 10px;
+}
+
 div[data-baseweb="select"] > div,
 div[data-baseweb="input"] > div {
     background: #111c2e;
-    border-color: #30435e;
+    border-color: #30415b;
     border-radius: 9px;
 }
-.stButton > button, .stDownloadButton > button,
-[data-testid="stFormSubmitButton"] > button {
-    border-radius: 9px;
-    border: 1px solid #34506a;
-    background: linear-gradient(135deg, #18334a, #15263b);
-    color: #eef7ff;
-    min-height: 40px;
-    font-weight: 600;
-    transition: all .18s ease;
-}
-.stButton > button:hover, .stDownloadButton > button:hover,
-[data-testid="stFormSubmitButton"] > button:hover {
-    border-color: #45d9e8;
-    color: #45d9e8;
-    background: #183449;
-}
-[data-testid="stDataFrame"] {
-    border: 1px solid #293c55;
-    border-radius: 11px;
-    overflow: hidden;
-}
-hr { border-color: #27374d; margin: 1.2rem 0; }
-footer, #MainMenu { visibility: hidden; }
 
-/* Hero */
+hr {
+    border-color: #26354c;
+}
+
 .hero {
-    padding: 25px 29px 23px;
-    border-radius: 17px;
-    background:
-        radial-gradient(ellipse at 90% 10%, rgba(53, 173, 184, .14), transparent 45%),
-        linear-gradient(112deg, #152a44 0%, #13243a 58%, #15313d 100%);
-    border: 1px solid #2c455d;
-    margin-bottom: 21px;
-    box-shadow: 0 12px 28px rgba(0, 0, 0, .10);
+    padding: 27px 30px;
+    border-radius: 19px;
+    background: linear-gradient(115deg, #172c46, #122036 65%, #173544);
+    border: 1px solid #30465f;
+    margin-bottom: 24px;
 }
-.eyebrow, .section-label {
+
+.eyebrow {
     text-transform: uppercase;
-    color: #48d9e8;
-    font-size: 10px;
+    color: #48d7e8;
+    font-size: 11px;
     font-weight: 700;
-    letter-spacing: 1.8px;
+    letter-spacing: 2px;
 }
+
 .hero-title {
     font-family: 'Space Grotesk', sans-serif;
-    font-size: clamp(27px, 2.7vw, 38px);
+    font-size: clamp(27px, 3.2vw, 39px);
     font-weight: 700;
-    color: #f5f8ff;
-    line-height: 1.12;
-    margin: 10px 0 9px;
-    letter-spacing: -.7px;
-}
-.hero-subtitle {
-    color: #b1c3d9;
-    font-size: 13px;
-    max-width: 700px;
-    line-height: 1.65;
-}
-.status-pill {
-    display: inline-block;
-    border: 1px solid #31566b;
-    color: #65dce7;
-    background: rgba(19, 45, 60, .82);
-    border-radius: 30px;
-    padding: 5px 10px;
-    font-size: 10px;
-    font-weight: 700;
+    color: #f4f8ff;
+    line-height: 1.2;
+    margin: 10px 0;
 }
 
-/* Headings and panels */
-.section-label { margin-bottom: 5px; }
+.hero-subtitle {
+    color: #b2c3d9;
+    font-size: 14px;
+    max-width: 720px;
+    line-height: 1.7;
+}
+
+.section-label {
+    color: #48d7e8;
+    font-size: 11px;
+    letter-spacing: 1.8px;
+    font-weight: 700;
+    text-transform: uppercase;
+    margin-bottom: 5px;
+}
+
 .panel-title {
     color: #edf4ff;
     font-family: 'Space Grotesk', sans-serif;
-    font-size: 17px;
+    font-size: 19px;
     font-weight: 600;
     margin-bottom: 4px;
 }
+
 .panel-subtitle {
-    color: #8fa4bf;
-    font-size: 11px;
-    margin-bottom: 10px;
+    color: #8fa2bc;
+    font-size: 12px;
+    margin-bottom: 15px;
 }
+
 .insight-card {
     background: linear-gradient(145deg, #15243a, #111b2d);
     border: 1px solid #2a3c55;
     padding: 18px;
-    border-radius: 13px;
-    min-height: 126px;
+    border-radius: 14px;
+    min-height: 130px;
 }
+
 .insight-title {
     color: #94a9c5;
-    font-size: 11px;
+    font-size: 12px;
     margin-bottom: 8px;
-    letter-spacing: .4px;
 }
+
 .insight-value {
     font-family: 'Space Grotesk', sans-serif;
-    font-size: 21px;
+    font-size: 23px;
     font-weight: 700;
     color: #f2f7ff;
 }
-.insight-note { font-size: 11px; color: #91a7c1; margin-top: 8px; }
-.small-note { color: #8fa2bc; font-size: 11px; }
-[data-testid="stPlotlyChart"] { border-radius: 12px; }
-[data-testid="stCaptionContainer"] p { color: #8fa2bc; font-size: 11px; }
 
-/* Keep columns visually balanced on narrower screens */
-@media (max-width: 900px) {
-    .block-container { padding-top: 1rem; }
-    .hero { padding: 20px; }
+.insight-note {
+    font-size: 12px;
+    color: #91a7c1;
+    margin-top: 8px;
 }
+
+.status-pill {
+    display: inline-block;
+    border: 1px solid #31556b;
+    color: #64dce7;
+    background: #132d3c;
+    border-radius: 30px;
+    padding: 5px 11px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.small-note {
+    color: #8fa2bc;
+    font-size: 12px;
+}
+
+[data-testid="stDataFrame"] {
+    border: 1px solid #2a3c55;
+    border-radius: 12px;
+}
+
+footer {visibility: hidden;}
+#MainMenu {visibility: hidden;}
 </style>
 """, unsafe_allow_html=True)
 
@@ -337,7 +381,7 @@ def style_chart(fig, height=330):
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
         font=dict(color="#c6d3e5", family="DM Sans"),
-        margin=dict(l=8, r=8, t=28, b=8),
+        margin=dict(l=12, r=12, t=35, b=12),
         legend=dict(
             orientation="h",
             yanchor="bottom",
@@ -515,8 +559,7 @@ if page == "Overview":
             fig.update_xaxes(dtick=1)
             st.plotly_chart(
                 style_chart(fig, 360),
-                use_container_width=True,
-                config={"displayModeBar": True, "displaylogo": False, "responsive": True}
+                use_container_width=True
             )
         else:
             st.info("Timestamp information is unavailable.")
@@ -550,8 +593,7 @@ if page == "Overview":
         fig.update_layout(showlegend=True)
         st.plotly_chart(
             style_chart(fig, 360),
-            use_container_width=True,
-            config={"displayModeBar": True, "displaylogo": False, "responsive": True}
+            use_container_width=True
         )
 
     left, right = st.columns(2)
@@ -596,8 +638,7 @@ if page == "Overview":
         fig.update_layout(showlegend=False)
         st.plotly_chart(
             style_chart(fig, 320),
-            use_container_width=True,
-            config={"displayModeBar": True, "displaylogo": False, "responsive": True}
+            use_container_width=True
         )
 
     with right:
@@ -627,8 +668,7 @@ if page == "Overview":
         fig.update_layout(coloraxis_showscale=False)
         st.plotly_chart(
             style_chart(fig, 320),
-            use_container_width=True,
-            config={"displayModeBar": True, "displaylogo": False, "responsive": True}
+            use_container_width=True
         )
 
     st.markdown("---")
@@ -764,8 +804,7 @@ elif page == "Traffic Explorer":
         fig.update_xaxes(dtick=1)
         st.plotly_chart(
             style_chart(fig, 340),
-            use_container_width=True,
-            config={"displayModeBar": True, "displaylogo": False, "responsive": True}
+            use_container_width=True
         )
 
     with right:
@@ -790,8 +829,7 @@ elif page == "Traffic Explorer":
         fig.update_layout(showlegend=False)
         st.plotly_chart(
             style_chart(fig, 340),
-            use_container_width=True,
-            config={"displayModeBar": True, "displaylogo": False, "responsive": True}
+            use_container_width=True
         )
 
     left, right = st.columns(2)
@@ -829,8 +867,7 @@ elif page == "Traffic Explorer":
         fig.update_layout(showlegend=False)
         st.plotly_chart(
             style_chart(fig, 320),
-            use_container_width=True,
-            config={"displayModeBar": True, "displaylogo": False, "responsive": True}
+            use_container_width=True
         )
 
     with right:
@@ -868,8 +905,7 @@ elif page == "Traffic Explorer":
             )
             st.plotly_chart(
                 style_chart(fig, 320),
-                use_container_width=True,
-                config={"displayModeBar": True, "displaylogo": False, "responsive": True}
+                use_container_width=True
             )
 
     st.markdown("---")
@@ -990,8 +1026,7 @@ elif page == "Congestion Prediction":
 
         submitted = st.form_submit_button(
             "⚡ Estimate congestion",
-            use_container_width=True,
-            config={"displayModeBar": True, "displaylogo": False, "responsive": True}
+            use_container_width=True
         )
 
     if submitted:
