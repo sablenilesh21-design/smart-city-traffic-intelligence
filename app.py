@@ -462,19 +462,34 @@ with st.sidebar:
 # --------------------------------------------------
 if page == "Overview":
 
+    
     st.markdown("""
     <div class="hero">
-        <div class="eyebrow">SMART MOBILITY · ANALYTICS PLATFORM</div>
-        <div class="hero-title">Understand traffic.<br>Make smarter decisions.</div>
+        <div class="eyebrow">SMART CITY · DATA SCIENCE PROJECT</div>
+        <div class="hero-title">
+            Smart City Traffic Intelligence
+        </div>
+        <div style="
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 23px;
+            font-weight: 600;
+            color: #48d7e8;
+            margin: 5px 0 12px;
+        ">
+            Understand traffic. Make smarter decisions.
+        </div>
         <div class="hero-subtitle">
-            Explore historical vehicle-count patterns across selected Pune
-            intersections, identify busy periods, and estimate congestion
-            categories from the available data.
+            An interactive traffic analytics and congestion prediction
+            platform using historical Pune traffic camera data from
+            January 2023.
         </div>
         <br>
-        <span class="status-pill">● HISTORICAL DATA MODE</span>
+        <span class="status-pill">
+            ● HISTORICAL DATA · MACHINE LEARNING
+        </span>
     </div>
     """, unsafe_allow_html=True)
+
 
     # Global filters
     st.markdown('<div class="section-label">CONTROL CENTRE</div>',
