@@ -551,30 +551,43 @@ if page == "Overview":
     with left:
         panel_heading(
             "Traffic through the day",
-            "Average recorded vehicle count by hour"
+            "Average recorded vehicle count by hour · hover to see sample size"
         )
 
         if "Hour" in view.columns:
+            # Show both the mean and the number of records supporting it.
+            # This matters because some hours (especially the first/last hour)
+            # may contain far fewer observations than the hours in between.
             hourly = (
-                view.groupby("Hour", as_index=False)["new_vehicles"]
-                .mean()
+                view.groupby("Hour", as_index=False)
+                .agg(
+                    Average_Count=("new_vehicles", "mean"),
+                    Observations=("new_vehicles", "size")
+                )
                 .sort_values("Hour")
             )
 
             fig = px.area(
                 hourly,
                 x="Hour",
-                y="new_vehicles",
+                y="Average_Count",
                 markers=True,
+                custom_data=["Observations"],
                 labels={
                     "Hour": "Hour of day",
-                    "new_vehicles": "Average count"
+                    "Average_Count": "Average count"
                 }
             )
             fig.update_traces(
                 line=dict(color="#48d7e8", width=3),
                 fillcolor="rgba(72,215,232,0.12)",
-                marker=dict(size=7)
+                marker=dict(size=7),
+                hovertemplate=(
+                    "Hour: %{x}:00<br>"
+                    "Average recorded count: %{y:.2f}<br>"
+                    "Observations: %{customdata[0]:,}"
+                    "<extra></extra>"
+                )
             )
             fig.update_xaxes(dtick=1)
             st.plotly_chart(
@@ -621,7 +634,7 @@ if page == "Overview":
     with left:
         panel_heading(
             "Vehicle composition",
-            "Sum of recorded counts by vehicle type"
+            "Sum of recorded vehicle-count values by type"
         )
 
         vehicle_columns = [
@@ -659,6 +672,12 @@ if page == "Overview":
         st.plotly_chart(
             style_chart(fig, 320),
             use_container_width=True
+        )
+        st.caption(
+            "These bars sum the vehicle-count values recorded in the CSV. "
+            "They are not a count of unique vehicles across the whole city. "
+            "Unusually large observations are retained; validate them against "
+            "the source counting method before making operational claims."
         )
 
     with right:
